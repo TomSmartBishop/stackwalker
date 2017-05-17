@@ -30,14 +30,20 @@
 class StackWalkerToConsole : public StackWalker {
     public:
     StackWalkerToConsole () : StackWalker () {
-        //this->m_options = RetrieveSymbol | RetrieveLine;
+        this->m_options =  RetrieveSymbol | RetrieveLineAndFile;
     }
 
     protected:
     virtual void OnOutput (LPCSTR szText) {
         printf ("%s", szText);
     }
+
+	void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr) {
+		//nothing for now
+	}
 };
+
+
 
 void Func5 () {
     StackWalkerToConsole sw;

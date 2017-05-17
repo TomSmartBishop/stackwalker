@@ -636,44 +636,46 @@ class StackWalkerInternal {
                 }
             }
 
-            // Retrive some additional-infos about the module
-            IMAGEHLP_MODULE64_V3 Module;
-            const char *szSymType = "-unknown-";
-            if (this->GetModuleInfo (hProcess, baseAddr, &Module) != FALSE) {
-                switch (Module.SymType) {
-                    case SymNone:
-                        szSymType = "-nosymbols-";
-                        break;
-                    case SymCoff: // 1
-                        szSymType = "COFF";
-                        break;
-                    case SymCv: // 2
-                        szSymType = "CV";
-                        break;
-                    case SymPdb: // 3
-                        szSymType = "PDB";
-                        break;
-                    case SymExport: // 4
-                        szSymType = "-exported-";
-                        break;
-                    case SymDeferred: // 5
-                        szSymType = "-deferred-";
-                        break;
-                    case SymSym: // 6
-                        szSymType = "SYM";
-                        break;
-                    case 7: // SymDia:
-                        szSymType = "DIA";
-                        break;
-                    case 8: // SymVirtual:
-                        szSymType = "Virtual";
-                        break;
-                }
-            }
-            LPCSTR pdbName = Module.LoadedImageName;
-            if (Module.LoadedPdbName[0] != 0)
-                pdbName = Module.LoadedPdbName;
-            this->m_parent->OnLoadModule (img, mod, baseAddr, size, result, szSymType, pdbName, fileVersion);
+			if ((this->m_parent->m_options & StackWalker::RetrieveModuleInfo) != 0) {
+				// Retrive some additional-infos about the module
+				IMAGEHLP_MODULE64_V3 Module;
+				const char *szSymType = "-unknown-";
+				if (this->GetModuleInfo(hProcess, baseAddr, &Module) != FALSE) {
+					switch (Module.SymType) {
+					case SymNone:
+						szSymType = "-nosymbols-";
+						break;
+					case SymCoff: // 1
+						szSymType = "COFF";
+						break;
+					case SymCv: // 2
+						szSymType = "CV";
+						break;
+					case SymPdb: // 3
+						szSymType = "PDB";
+						break;
+					case SymExport: // 4
+						szSymType = "-exported-";
+						break;
+					case SymDeferred: // 5
+						szSymType = "-deferred-";
+						break;
+					case SymSym: // 6
+						szSymType = "SYM";
+						break;
+					case 7: // SymDia:
+						szSymType = "DIA";
+						break;
+					case 8: // SymVirtual:
+						szSymType = "Virtual";
+						break;
+					}
+				}
+				LPCSTR pdbName = Module.LoadedImageName;
+				if (Module.LoadedPdbName[0] != 0)
+					pdbName = Module.LoadedPdbName;
+				this->m_parent->OnLoadModule(img, mod, baseAddr, size, result, szSymType, pdbName, fileVersion);
+			}
         }
         if (szImg != NULL)
             free (szImg);
@@ -949,8 +951,8 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
     sym.SizeOfStruct = sizeof (IMAGEHLP_SYMBOL64);
     sym.MaxNameLength = STACKWALK_MAX_NAMELEN;
 
-    memset (&Line, 0, sizeof (Line));
-    Line.SizeOfStruct = sizeof (Line);
+	memset(&Line, 0, sizeof(Line));
+	Line.SizeOfStruct = sizeof(Line);
 
     memset (&Module, 0, sizeof (Module));
     Module.SizeOfStruct = sizeof (Module);
@@ -987,7 +989,7 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             curRecursionCount++;
         } else
             curRecursionCount = 0;
-        if (s.AddrPC.Offset != 0) {
+        if ((m_options & RetrieveSymbol) && s.AddrPC.Offset != 0) {
             // we seem to have a valid PC
             // show procedure info (SymGetSymFromAddr64())
             if (this->m_sw->pSGSFA (this->m_hProcess, s.AddrPC.Offset, &(csEntry.offsetFromSmybol), &sym) != FALSE) {
@@ -1000,7 +1002,7 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             }
 
             // show line number info, NT5.0-method (SymGetLineFromAddr64())
-            if (this->m_sw->pSGLFA != NULL) { // yes, we have SymGetLineFromAddr64()
+            if ( (m_options & RetrieveLineAndFile) && this->m_sw->pSGLFA != NULL) { // yes, we have SymGetLineFromAddr64()
                 if (this->m_sw->pSGLFA (this->m_hProcess, s.AddrPC.Offset,
                                         &(csEntry.offsetFromLine), &Line) != FALSE) {
                     csEntry.lineNumber = Line.LineNumber;
@@ -1011,51 +1013,54 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             } // yes, we have SymGetLineFromAddr64()
 
             // show module info (SymGetModuleInfo64())
-            if (this->m_sw->GetModuleInfo (this->m_hProcess, s.AddrPC.Offset, &Module) != FALSE) { // got module info OK
-                switch (Module.SymType) {
-                    case SymNone:
-                        csEntry.symTypeString = "-nosymbols-";
-                        break;
-                    case SymCoff:
-                        csEntry.symTypeString = "COFF";
-                        break;
-                    case SymCv:
-                        csEntry.symTypeString = "CV";
-                        break;
-                    case SymPdb:
-                        csEntry.symTypeString = "PDB";
-                        break;
-                    case SymExport:
-                        csEntry.symTypeString = "-exported-";
-                        break;
-                    case SymDeferred:
-                        csEntry.symTypeString = "-deferred-";
-                        break;
-                    case SymSym:
-                        csEntry.symTypeString = "SYM";
-                        break;
+			if ((m_options & RetrieveModuleInfo))
+			{
+				if (this->m_sw->GetModuleInfo(this->m_hProcess, s.AddrPC.Offset, &Module) != FALSE) { // got module info OK
+					switch (Module.SymType) {
+					case SymNone:
+						csEntry.symTypeString = "-nosymbols-";
+						break;
+					case SymCoff:
+						csEntry.symTypeString = "COFF";
+						break;
+					case SymCv:
+						csEntry.symTypeString = "CV";
+						break;
+					case SymPdb:
+						csEntry.symTypeString = "PDB";
+						break;
+					case SymExport:
+						csEntry.symTypeString = "-exported-";
+						break;
+					case SymDeferred:
+						csEntry.symTypeString = "-deferred-";
+						break;
+					case SymSym:
+						csEntry.symTypeString = "SYM";
+						break;
 #if API_VERSION_NUMBER >= 9
-                    case SymDia:
-                        csEntry.symTypeString = "DIA";
-                        break;
+					case SymDia:
+						csEntry.symTypeString = "DIA";
+						break;
 #endif
-                    case 8: // SymVirtual:
-                        csEntry.symTypeString = "Virtual";
-                        break;
-                    default:
-                        //_snprintf( ty, sizeof ty, "symtype=%ld", (long)
-                        // Module.SymType );
-                        csEntry.symTypeString = NULL;
-                        break;
-                }
+					case 8: // SymVirtual:
+						csEntry.symTypeString = "Virtual";
+						break;
+					default:
+						//_snprintf( ty, sizeof ty, "symtype=%ld", (long)
+						// Module.SymType );
+						csEntry.symTypeString = NULL;
+						break;
+					}
 
-                MyStrCpy (csEntry.moduleName, STACKWALK_MAX_NAMELEN, Module.ModuleName);
-                csEntry.baseOfImage = Module.BaseOfImage;
-                MyStrCpy (csEntry.loadedImageName, STACKWALK_MAX_NAMELEN, Module.LoadedImageName);
-            } // got module info OK
-            else {
-                this->OnDbgHelpErr ("SymGetModuleInfo64", GetLastError (), s.AddrPC.Offset);
-            }
+					MyStrCpy(csEntry.moduleName, STACKWALK_MAX_NAMELEN, Module.ModuleName);
+					csEntry.baseOfImage = Module.BaseOfImage;
+					MyStrCpy(csEntry.loadedImageName, STACKWALK_MAX_NAMELEN, Module.LoadedImageName);
+				} // got module info OK
+				else {
+					this->OnDbgHelpErr("SymGetModuleInfo64", GetLastError(), s.AddrPC.Offset);
+				}
+			}
         } // we seem to have a valid PC
 
         CallstackEntryType et = nextEntry;

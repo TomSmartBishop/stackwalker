@@ -61,8 +61,8 @@ class StackWalker {
         // Try to get the symbol-name
         RetrieveSymbol = 1,
 
-        // Try to get the line for this symbol
-        RetrieveLine = 2,
+        // Try to get the line and filename for this symbol
+        RetrieveLineAndFile = 2,
 
         // Try to retrieve the module-infos
         RetrieveModuleInfo = 4,
