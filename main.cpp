@@ -31,6 +31,7 @@ class StackWalkerToConsole : public StackWalker {
     public:
     StackWalkerToConsole () : StackWalker () {
         this->m_options =  RetrieveSymbol | RetrieveLineAndFile;
+		//this->m_MaxStackDepth = 9;
     }
 
     protected:
@@ -39,6 +40,10 @@ class StackWalkerToConsole : public StackWalker {
     }
 
 	void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr) {
+		//nothing for now
+	}
+
+	void OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName) {
 		//nothing for now
 	}
 };

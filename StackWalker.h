@@ -61,7 +61,7 @@ class StackWalker {
         // Try to get the symbol-name
         RetrieveSymbol = 1,
 
-        // Try to get the line and filename for this symbol
+        // Try to get the line for this symbol
         RetrieveLineAndFile = 2,
 
         // Try to retrieve the module-infos
@@ -87,6 +87,7 @@ class StackWalker {
     } StackWalkOptions;
 
     StackWalker (int options = OptionsAll, // 'int' is by design, to combine the enum-flags
+				 int maxStepDepth = 0,
                  LPCSTR szSymPath = NULL,
                  DWORD dwProcessId = GetCurrentProcessId (),
                  HANDLE hProcess = GetCurrentProcess ());
@@ -152,6 +153,7 @@ class StackWalker {
 
     int m_options;
     int m_MaxRecursionCount;
+	int m_MaxStackDepth;
 
     static BOOL __stdcall myReadProcMem (HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead);
 

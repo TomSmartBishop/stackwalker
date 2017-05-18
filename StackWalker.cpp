@@ -731,11 +731,47 @@ class StackWalkerInternal {
         SetLastError (ERROR_DLL_INIT_FAILED);
         return FALSE;
     }
+
+	void ArchSetup(const CONTEXT &c,STACKFRAME64 &s, DWORD &imageType) {
+		// init STACKFRAME for first call
+		memset(&s, 0, sizeof(s));
+#ifdef _M_IX86
+		// normally, call ImageNtHeader() and use machine info from PE header
+		imageType = IMAGE_FILE_MACHINE_I386;
+		s.AddrPC.Offset = c.Eip;
+		s.AddrPC.Mode = AddrModeFlat;
+		s.AddrFrame.Offset = c.Ebp;
+		s.AddrFrame.Mode = AddrModeFlat;
+		s.AddrStack.Offset = c.Esp;
+		s.AddrStack.Mode = AddrModeFlat;
+#elif _M_X64
+		imageType = IMAGE_FILE_MACHINE_AMD64;
+		s.AddrPC.Offset = c.Rip;
+		s.AddrPC.Mode = AddrModeFlat;
+		s.AddrFrame.Offset = c.Rsp;
+		s.AddrFrame.Mode = AddrModeFlat;
+		s.AddrStack.Offset = c.Rsp;
+		s.AddrStack.Mode = AddrModeFlat;
+#elif _M_IA64
+		imageType = IMAGE_FILE_MACHINE_IA64;
+		s.AddrPC.Offset = c.StIIP;
+		s.AddrPC.Mode = AddrModeFlat;
+		s.AddrFrame.Offset = c.IntSp;
+		s.AddrFrame.Mode = AddrModeFlat;
+		s.AddrBStore.Offset = c.RsBSP;
+		s.AddrBStore.Mode = AddrModeFlat;
+		s.AddrStack.Offset = c.IntSp;
+		s.AddrStack.Mode = AddrModeFlat;
+#else
+#error "Platform not supported!"
+#endif
+	}
 };
 
 // #############################################################
 StackWalker::StackWalker (DWORD dwProcessId, HANDLE hProcess) {
     this->m_options = OptionsAll;
+	this->m_MaxStackDepth = 0;
     this->m_modulesLoaded = FALSE;
     this->m_hProcess = hProcess;
     this->m_sw = new StackWalkerInternal (this, this->m_hProcess);
@@ -743,8 +779,9 @@ StackWalker::StackWalker (DWORD dwProcessId, HANDLE hProcess) {
     this->m_szSymPath[0] = 0;
     this->m_MaxRecursionCount = 1000;
 }
-StackWalker::StackWalker (int options, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess) {
+StackWalker::StackWalker (int options, int maxStackDepth, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess) {
     this->m_options = options;
+	this->m_MaxStackDepth = maxStackDepth;
     this->m_modulesLoaded = FALSE;
     this->m_hProcess = hProcess;
     this->m_sw = new StackWalkerInternal (this, this->m_hProcess);
@@ -912,40 +949,10 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
     } else
         c = *context;
 
-    // init STACKFRAME for first call
-    STACKFRAME64 s; // in/out stackframe
-    memset (&s, 0, sizeof (s));
-    DWORD imageType;
-#ifdef _M_IX86
-    // normally, call ImageNtHeader() and use machine info from PE header
-    imageType = IMAGE_FILE_MACHINE_I386;
-    s.AddrPC.Offset = c.Eip;
-    s.AddrPC.Mode = AddrModeFlat;
-    s.AddrFrame.Offset = c.Ebp;
-    s.AddrFrame.Mode = AddrModeFlat;
-    s.AddrStack.Offset = c.Esp;
-    s.AddrStack.Mode = AddrModeFlat;
-#elif _M_X64
-    imageType = IMAGE_FILE_MACHINE_AMD64;
-    s.AddrPC.Offset = c.Rip;
-    s.AddrPC.Mode = AddrModeFlat;
-    s.AddrFrame.Offset = c.Rsp;
-    s.AddrFrame.Mode = AddrModeFlat;
-    s.AddrStack.Offset = c.Rsp;
-    s.AddrStack.Mode = AddrModeFlat;
-#elif _M_IA64
-    imageType = IMAGE_FILE_MACHINE_IA64;
-    s.AddrPC.Offset = c.StIIP;
-    s.AddrPC.Mode = AddrModeFlat;
-    s.AddrFrame.Offset = c.IntSp;
-    s.AddrFrame.Mode = AddrModeFlat;
-    s.AddrBStore.Offset = c.RsBSP;
-    s.AddrBStore.Mode = AddrModeFlat;
-    s.AddrStack.Offset = c.IntSp;
-    s.AddrStack.Mode = AddrModeFlat;
-#else
-#error "Platform not supported!"
-#endif
+	STACKFRAME64 s;
+	DWORD imageType;
+	this->m_sw->ArchSetup(c, s, imageType);
+
 
     memset (&sym, 0, sizeof (IMAGEHLP_SYMBOL64_WITH_NAME));
     sym.SizeOfStruct = sizeof (IMAGEHLP_SYMBOL64);
@@ -958,6 +965,8 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
     Module.SizeOfStruct = sizeof (Module);
 
     for (frameNum = 0;; ++frameNum) {
+		if (m_MaxStackDepth > 0 && frameNum >= m_MaxStackDepth)
+			break;
         // get next stack frame (StackWalk64(), SymFunctionTableAccess64(),
         // SymGetModuleBase64()) if this returns ERROR_INVALID_ADDRESS (487) or
         // ERROR_NOACCESS (998), you can assume that either you are done, or
