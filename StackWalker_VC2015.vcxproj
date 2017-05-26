@@ -515,10 +515,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="StackWalker.cpp" />
+    <ClCompile Include="main.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch/pch.hpp</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="pch\pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch.hpp</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="StackWalker.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch/pch.hpp</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="StackWalkerInternal.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch/pch.hpp</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="StackWalkerInternal.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DebugHelp.h" />
+    <ClInclude Include="pch\pch.hpp" />
     <ClInclude Include="StackWalker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

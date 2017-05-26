@@ -10,9 +10,7 @@
  *
  **********************************************************************/
 
-#include "StackWalker.h"
-#include <stdio.h>
-#include <tchar.h>
+#include "pch/pch.hpp"
 
 #define UNHANDLED_EXCEPTION_TEST
 #define EXCEPTION_FILTER_TEST
@@ -43,9 +41,9 @@ class StackWalkerToConsole : public StackWalker {
 		//nothing for now
 	}
 
-	void OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName) {
-		//nothing for now
-	}
+	//void OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName) {
+	//	//nothing for now
+	//}
 };
 
 
