@@ -9,29 +9,6 @@
  *   Copyright (c) 2005-2009, Jochen Kalmbach
  *   All rights reserved.
  *
- *   Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   Redistributions of source code must retain the above copyright notice,
- *   this list of conditions and the following disclaimer.
- *   Redistributions in binary form must reproduce the above copyright notice,
- *   this list of conditions and the following disclaimer in the documentation
- *   and/or other materials provided with the distribution.
- *   Neither the name of Jochen Kalmbach nor the names of its contributors may
- * be used to endorse or promote products derived from this software without
- *   specific prior written permission.
- *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- *   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
  * **********************************************************************/
 // #pragma once is supported starting with _MCS_VER 1000,
 // so we need not to check the version (because we only support _MSC_VER >=
@@ -45,7 +22,6 @@
 #pragma warning(disable : 4826)
 
 
-
 // special defines for VC5/6 (if no actual PSDK is installed):
 #if _MSC_VER < 1300
 typedef unsigned __int64 DWORD64, *PDWORD64;
@@ -56,7 +32,6 @@ typedef unsigned long SIZE_T, *PSIZE_T;
 #endif
 #endif // _MSC_VER < 1300
 
-class StackWalkerInternal; // forward
 
 class StackWalker {
     public:
@@ -123,27 +98,28 @@ class StackWalker {
                                                 // 'readMemoryFunction'-callback
                         );
 
-    enum {
-        STACKWALK_MAX_NAMELEN = 1024,
-        STACKWALK_MAX_TEMP_BUFFER = 4096
+	enum {
+		STACKWALKER_MAX_NAMELEN = 1024,
+		STACKWALKER_MAX_TEMP_BUFFER = 1024,
+		STACKWALKERINTERNAL_STRUCT_SIZE = 2048
     }; // max name length for found symbols
 
     protected:
     // Entry for each Callstack-Entry
     typedef struct CallstackEntry {
         DWORD64 offset; // if 0, we have no valid entry
-        CHAR name[STACKWALK_MAX_NAMELEN];
-        CHAR undName[STACKWALK_MAX_NAMELEN];
-        CHAR undFullName[STACKWALK_MAX_NAMELEN];
+        CHAR name[STACKWALKER_MAX_NAMELEN];
+        CHAR undName[STACKWALKER_MAX_NAMELEN];
+        CHAR undFullName[STACKWALKER_MAX_NAMELEN];
         DWORD64 offsetFromSmybol;
         DWORD offsetFromLine;
         DWORD lineNumber;
-        CHAR lineFileName[STACKWALK_MAX_NAMELEN];
+        CHAR lineFileName[STACKWALKER_MAX_NAMELEN];
         DWORD symType;
         LPCSTR symTypeString;
-        CHAR moduleName[STACKWALK_MAX_NAMELEN];
+        CHAR moduleName[STACKWALKER_MAX_NAMELEN];
         DWORD64 baseOfImage;
-        CHAR loadedImageName[STACKWALK_MAX_NAMELEN];
+        CHAR loadedImageName[STACKWALKER_MAX_NAMELEN];
     } CallstackEntry;
 
     enum CallstackEntryType { firstEntry, nextEntry, lastEntry };
@@ -155,11 +131,10 @@ class StackWalker {
     virtual void OnDbgHelpErr (LPCSTR szFuncName, DWORD gle, DWORD64 addr);
     virtual void OnOutput (LPCSTR szText);
 
-    StackWalkerInternal *m_sw;
     HANDLE m_hProcess;
     DWORD m_dwProcessId;
     BOOL m_modulesLoaded;
-    CHAR m_szSymPath[STACKWALK_MAX_TEMP_BUFFER];
+    CHAR m_szSymPath[STACKWALKER_MAX_TEMP_BUFFER];
 
     int m_options;
     int m_MaxRecursionCount;
@@ -167,7 +142,15 @@ class StackWalker {
 
     static BOOL __stdcall myReadProcMem (HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead);
 
-    friend StackWalkerInternal;
+
+private:
+	struct Internal;
+
+	Internal& internal() { return reinterpret_cast<Internal&>(m_storage); }
+	Internal const& internal() const { return reinterpret_cast<Internal const&>(m_storage); }
+
+	char m_storage[STACKWALKERINTERNAL_STRUCT_SIZE];
+
 }; // class StackWalker
 
 #pragma warning(pop)

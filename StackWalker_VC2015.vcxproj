@@ -527,11 +527,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Use</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch/pch.hpp</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="StackWalkerInternal.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">pch/pch.hpp</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="StackWalkerInternal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DebugHelp.h" />

@@ -8,4 +8,3 @@
 
 #include "../DebugHelp.h"
 #include "../StackWalker.h"
-#include "../StackWalkerInternal.h"

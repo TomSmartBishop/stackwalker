@@ -8,31 +8,79 @@
 *   Copyright (c) 2005-2013, Jochen Kalmbach
 *   All rights reserved.
 *
-*   Redistribution and use in source and binary forms, with or without
-*   modification, are permitted provided that the following conditions are met:
-*
-*   Redistributions of source code must retain the above copyright notice,
-*   this list of conditions and the following disclaimer.
-*   Redistributions in binary form must reproduce the above copyright notice,
-*   this list of conditions and the following disclaimer in the documentation
-*   and/or other materials provided with the distribution.
-*   Neither the name of Jochen Kalmbach nor the names of its contributors may
-*   be used to endorse or promote products derived from this software without
-*   specific prior written permission.
-*   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-*   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-*   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-*   PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
-*   BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-*   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-*   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-*   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-*   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-*   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-*   POSSIBILITY OF SUCH DAMAGE.
-*
 **********************************************************************/
 #pragma once
+
+// Some missing defines (for VC5/6):
+#ifndef INVALID_FILE_ATTRIBUTES
+#define INVALID_FILE_ATTRIBUTES ((DWORD)-1)
+#endif
+
+// secure-CRT_functions are only available starting with VC8
+#if _MSC_VER < 1400
+#define strcpy_s(dst, len, src) strcpy (dst, src)
+#define strncpy_s(dst, len, src, maxLen) strncpy (dst, len, src)
+#define strcat_s(dst, len, src) strcat (dst, src)
+#define _snprintf_s _snprintf
+#define _tcscat_s _tcscat
+#endif
+
+// The "ugly" assembler-implementation is needed for systems before XP
+// If you have a new PSDK and you only compile for XP and later, then you can
+// use the "RtlCaptureContext" Currently there is no define which determines the
+// PSDK-Version... So we just use the compiler-version (and assumes that the
+// PSDK is the one which was installed by the VS-IDE)
+
+// INFO: If you want, you can use the RtlCaptureContext if you only target XP
+// and later...
+//       But I currently use it in x64/IA64 environments...
+//#if defined(_M_IX86) && (_WIN32_WINNT <= 0x0500) && (_MSC_VER < 1400)
+
+#if defined(_M_IX86)
+#ifdef CURRENT_THREAD_VIA_EXCEPTION
+// TODO: The following is not a "good" implementation,
+// because the callstack is only valid in the "__except" block...
+#define GET_CURRENT_CONTEXT(c, contextFlags)                                                                 \
+    do {                                                                                                     \
+        memset (&c, 0, sizeof (CONTEXT));                                                                    \
+        EXCEPTION_POINTERS *pExp = NULL;                                                                     \
+        __try {                                                                                              \
+            throw 0;                                                                                         \
+        \
+} __except (((pExp = GetExceptionInformation ()) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_EXECUTE_HANDLER)) { \
+        }                                                                                                    \
+        if (pExp != NULL)                                                                                    \
+            memcpy (&c, pExp->ContextRecord, sizeof (CONTEXT));                                              \
+        c.ContextFlags = contextFlags;                                                                       \
+    } while (0);
+#else
+// The following should be enough for walking the callstack...
+#define GET_CURRENT_CONTEXT(c, contextFlags)                                                          \
+    do {                                                                                              \
+        memset (&c, 0, sizeof (CONTEXT));                                                             \
+        c.ContextFlags = contextFlags;                                                                \
+        __asm call x __asm x : pop eax __asm mov c.Eip, eax __asm mov c.Ebp, ebp __asm mov c.Esp, esp \
+    } while (0);
+#endif
+
+#else
+
+// The following is defined for x86 (XP and higher), x64 and IA64:
+#define GET_CURRENT_CONTEXT(c, contextFlags)                                                       \
+    do {                                                                                           \
+        memset (&c, 0, sizeof (CONTEXT));                                                          \
+        c.ContextFlags = contextFlags;                                                             \
+        RtlCaptureContext (&c);                                                                    \
+    } while (0);
+#endif
+
+
+// Normally it should be enough to use 'CONTEXT_FULL' (better would be
+// 'CONTEXT_ALL')
+#define USED_CONTEXT_FLAGS CONTEXT_FULL
+
+#define MAX_MODULE_NAME32 255
+#define TH32CS_SNAPMODULE 0x00000008
 
 // If VC7 and later, then use the shipped 'dbghelp.h'-file
 #pragma pack(push, 8)
@@ -147,5 +195,63 @@ typedef DWORD64(__stdcall *PTRANSLATE_ADDRESS_ROUTINE64) (HANDLE hProcess, HANDL
 #define SYMOPT_DEBUG 0x80000000
 #define UNDNAME_COMPLETE (0x0000)  // Enable full un-decoration
 #define UNDNAME_NAME_ONLY (0x1000) // Crack only the name for primary declaration;
+
 #endif                             // _MSC_VER < 1300
+
+typedef struct tagMODULEENTRY32 {
+	DWORD dwSize;
+	DWORD th32ModuleID;  // This module
+	DWORD th32ProcessID; // owning process
+	DWORD GlblcntUsage;  // Global usage count on the module
+	DWORD ProccntUsage;  // Module usage count in th32ProcessID's context
+	BYTE *modBaseAddr;   // Base address of module in th32ProcessID's context
+	DWORD modBaseSize;   // Size in bytes of module starting at modBaseAddr
+	HMODULE
+		hModule; // The hModule of this module in th32ProcessID's context
+	char szModule[MAX_MODULE_NAME32 + 1];
+	char szExePath[MAX_PATH];
+} MODULEENTRY32;
+typedef MODULEENTRY32 *PMODULEENTRY32;
+typedef MODULEENTRY32 *LPMODULEENTRY32;
+
+struct IMAGEHLP_MODULE64_V3 {
+	DWORD SizeOfStruct;        // set to sizeof(IMAGEHLP_MODULE64)
+	DWORD64 BaseOfImage;       // base load address of module
+	DWORD ImageSize;           // virtual size of the loaded module
+	DWORD TimeDateStamp;       // date/time stamp from pe header
+	DWORD CheckSum;            // checksum from the pe header
+	DWORD NumSyms;             // number of symbols in the symbol table
+	SYM_TYPE SymType;          // type of symbols loaded
+	CHAR ModuleName[32];       // module name
+	CHAR ImageName[256];       // image name
+	CHAR LoadedImageName[256]; // symbol file name
+							   // new elements: 07-Jun-2002
+	CHAR LoadedPdbName[256];   // pdb file name
+	DWORD CVSig;               // Signature of the CV record in the debug directories
+	CHAR CVData[MAX_PATH * 3]; // Contents of the CV record
+	DWORD PdbSig;              // Signature of PDB
+	GUID PdbSig70;             // Signature of PDB (VC 7 and up)
+	DWORD PdbAge;              // DBI age of pdb
+	BOOL PdbUnmatched;         // loaded an unmatched pdb
+	BOOL DbgUnmatched;         // loaded an unmatched dbg
+	BOOL LineNumbers;          // we have line number information
+	BOOL GlobalSymbols;        // we have internal symbol information
+	BOOL TypeInfo;             // we have type information
+							   // new elements: 17-Dec-2003
+	BOOL SourceIndexed; // pdb supports source server
+	BOOL Publics;       // contains public symbols
+};
+
+struct IMAGEHLP_MODULE64_V2 {
+	DWORD SizeOfStruct;        // set to sizeof(IMAGEHLP_MODULE64)
+	DWORD64 BaseOfImage;       // base load address of module
+	DWORD ImageSize;           // virtual size of the loaded module
+	DWORD TimeDateStamp;       // date/time stamp from pe header
+	DWORD CheckSum;            // checksum from the pe header
+	DWORD NumSyms;             // number of symbols in the symbol table
+	SYM_TYPE SymType;          // type of symbols loaded
+	CHAR ModuleName[32];       // module name
+	CHAR ImageName[256];       // image name
+	CHAR LoadedImageName[256]; // symbol file name
+};
 #pragma pack(pop)
