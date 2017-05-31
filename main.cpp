@@ -28,7 +28,7 @@
 class StackWalkerToConsole : public StackWalker {
     public:
     StackWalkerToConsole () : StackWalker () {
-        this->m_options =  RetrieveSymbol | RetrieveLineAndFile;
+        this->m_options =  RetrieveSymbol | RetrieveLineAndFile | RetrieveModuleInfo | RetrieveFileVersion;
 		//this->m_MaxStackDepth = 9;
     }
 
