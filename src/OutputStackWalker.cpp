@@ -11,7 +11,6 @@
  **********************************************************************/
 #include "pch/pch.hpp"
 
-
 void OutputStackWalker::OnLoadModule (LPCSTR img,
                                       LPCSTR mod,
                                       DWORD64 baseAddr,

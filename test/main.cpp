@@ -33,9 +33,8 @@
 // Console (printf):
 class StackWalkerToConsole : public OutputStackWalker {
     public:
-    StackWalkerToConsole () : OutputStackWalker() {
-		this->m_options = RetrieveSymbol | RetrieveLineAndFile;// | RetrieveModuleInfo | RetrieveFileVersion;
-		this->m_MaxStackDepth = 5;
+    StackWalkerToConsole () : OutputStackWalker(RetrieveSymbol | RetrieveLineAndFile | LoadModulesOnInit, 7)
+	{
     }
 
     protected:

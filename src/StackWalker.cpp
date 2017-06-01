@@ -285,8 +285,6 @@ struct StackWalker::Internal {
         return result;
     }
 
-    static const wchar_t *Internal::dbg_help_path[];
-
     void DeInit (StackWalker *parent) {
         if (pSymCleanup != NULL)
             pSymCleanup (m_hProcess); // SymCleanup
@@ -296,7 +294,7 @@ struct StackWalker::Internal {
         parent = NULL;
     }
 
-    BOOL Init (StackWalker *parent, HANDLE hProcess, LPCSTR szSymPath) {
+    BOOL Init (StackWalker *parent, HANDLE hProcess, PSTR szSymPath) {
 
         static_assert (sizeof (Internal) < Parameter::STACKWALKER_INTERNAL_STRUCT_SIZE, "Increase buffer size");
 
@@ -306,7 +304,7 @@ struct StackWalker::Internal {
         m_hDbhHelp = NULL;
         pSymCleanup = NULL;
         m_hProcess = hProcess;
-        m_szSymPath[0] = 0;
+        //m_szSymPath[0] = 0;
         pSymFunctionTableAccess64 = NULL;
         pSymGetLineFromAddr64 = NULL;
         pSymGetModuleBase64 = NULL;
@@ -332,6 +330,22 @@ struct StackWalker::Internal {
                 DWORD result = GetEnvironmentVariable (_T("ProgramFiles"), szTemp,
                                                        Parameter::STACKWALKER_MAX_TEMP_BUFFER);
                 int idx = 0;
+
+				const wchar_t * dbg_help_path[] =
+				{
+					_T("\\Debugging Tools for Windows\\dbghelp.dll"),
+#ifdef _M_IX86
+					_T("\\Debugging Tools for Windows (x86)\\dbghelp.dll"),
+#elif _M_X64
+					_T("\\Debugging Tools for Windows (x64)\\dbghelp.dll"),
+#elif _M_IA64
+					_T("\\Debugging Tools for Windows (ia64)\\dbghelp.dll"),
+#endif
+#if defined _M_X64 || defined _M_IA64
+					_T("\\Debugging Tools for Windows 64-Bit\\dbghelp.dll"),
+#endif
+				_T("") };
+
                 while (result > 0 && dbg_help_path[idx][0] != 0) {
                     _tcscat_s (szTemp, dbg_help_path[idx]);
                     // now check if the file exists:
@@ -380,9 +394,9 @@ struct StackWalker::Internal {
         }
 
         // SymInitialize
-        if (szSymPath != NULL && szSymPath[0] != 0)
-            strcpy_s (m_szSymPath, strlen (szSymPath) + 1, szSymPath);
-        if (pSymInitialize (m_hProcess, m_szSymPath, FALSE) == FALSE)
+        //if (szSymPath != NULL && szSymPath[0] != 0)
+        //    strcpy_s (m_szSymPath, strlen (szSymPath) + 1, szSymPath);
+        if (pSymInitialize (m_hProcess, szSymPath, FALSE) == FALSE)
             parent->OnDbgHelpErr ("SymInitialize", GetLastError (), 0);
 
         DWORD symOptions = pSymGetOptions();
@@ -459,22 +473,8 @@ struct StackWalker::Internal {
 
     HMODULE m_hDbhHelp;
     HANDLE m_hProcess;
-    CHAR m_szSymPath[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
+   // CHAR m_szSymPath[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
 };
-
-const wchar_t *StackWalker::Internal::dbg_help_path[] =
-{ _T("\\Debugging Tools for Windows\\dbghelp.dll"),
-#ifdef _M_IX86
-  _T("\\Debugging Tools for Windows (x86)\\dbghelp.dll"),
-#elif _M_X64
-  _T("\\Debugging Tools for Windows (x64)\\dbghelp.dll"),
-#elif _M_IA64
-  _T("\\Debugging Tools for Windows (ia64)\\dbghelp.dll"),
-#endif
-#if defined _M_X64 || defined _M_IA64
-  _T("\\Debugging Tools for Windows 64-Bit\\dbghelp.dll"),
-#endif
-  _T("") };
 
 static void ArchSetup (const CONTEXT &c, STACKFRAME64 &s, DWORD &imageType) {
     // init STACKFRAME for first call
@@ -525,47 +525,60 @@ void StackWalker::StrCpy(char *szDest, size_t nMaxDestSize, const char *szSrc) {
 } // MyStrCpy
 
 // #############################################################
-StackWalker::StackWalker (DWORD dwProcessId, HANDLE hProcess) {
-    m_options = OptionsAll;
-    m_MaxStackDepth = 0;
-    m_modulesLoaded = FALSE;
-    m_hProcess = hProcess;
-    m_dwProcessId = dwProcessId;
-    m_szSymPath[0] = 0;
-    m_MaxRecursionCount = 1000;
-}
-StackWalker::StackWalker (int options, int maxStackDepth, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess) {
-    m_options = options;
-    m_MaxStackDepth = maxStackDepth;
-    m_modulesLoaded = FALSE;
-    m_hProcess = hProcess;
-    m_dwProcessId = dwProcessId;
-    if (szSymPath != NULL) {
-        strcpy_s (m_szSymPath, strlen (szSymPath) + 1, szSymPath);
-        m_options |= SymBuildPath;
-    } else {
-        m_szSymPath[0] = 0;
-    }
+StackWalker::StackWalker (DWORD dwProcessId, HANDLE hProcess)
+ : m_options(OptionsAll)
+ , m_MaxStackDepth(0)
+ , m_modulesLoaded(FALSE)
+ , m_hProcess(hProcess)
+ , m_dwProcessId(dwProcessId)
+ , m_MaxRecursionCount(1000)
+{
 
-    m_MaxRecursionCount = 1000;
+	if(m_options&LoadModulesOnInit)
+		LoadModules();
+}
+
+StackWalker::StackWalker(int options, int maxStackDepth, DWORD dwProcessId, HANDLE hProcess)
+	: m_options(options)
+	, m_MaxStackDepth(maxStackDepth)
+	, m_modulesLoaded(FALSE)
+	, m_hProcess(hProcess)
+	, m_dwProcessId(dwProcessId)
+	, m_MaxRecursionCount(1000)
+{
+	if (m_options&LoadModulesOnInit)
+		LoadModules();
+}
+
+StackWalker::StackWalker (int options, int maxStackDepth, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess)
+	: m_options(options)
+		, m_MaxStackDepth(maxStackDepth)
+		, m_modulesLoaded(FALSE)
+		, m_hProcess(hProcess)
+		, m_dwProcessId(dwProcessId)
+		, m_MaxRecursionCount(1000)
+{
+
+	m_options |= LoadModulesOnInit;
+	LoadModules(szSymPath);
 }
 
 StackWalker::~StackWalker () {
 }
 
-BOOL StackWalker::LoadModules () {
+BOOL StackWalker::LoadModules (LPCSTR szOptSymPath) {
 
     if (m_modulesLoaded != FALSE)
         return TRUE;
 
     // Build the sym-path:
     const size_t nSymPathLen = Parameter::STACKWALKER_MAX_TEMP_BUFFER;
-    char szSymPath[nSymPathLen];
+    CHAR szSymPath[nSymPathLen];
     szSymPath[0] = 0;
 
     if ((m_options & SymBuildPath) != 0) {
         // Now first add the (optional) provided sympath:
-        if (m_szSymPath[0] != 0) {
+        if (szOptSymPath!=NULL && szOptSymPath[0] != 0) {
             strcat_s (szSymPath, nSymPathLen, m_szSymPath);
             strcat_s (szSymPath, nSymPathLen, ";");
         }
@@ -630,7 +643,7 @@ BOOL StackWalker::LoadModules () {
     } // if SymBuildPath
 
     // First Init the whole stuff...
-    BOOL bRet = internal ().Init (this, m_hProcess, szSymPath);
+    BOOL bRet = internal().Init(this, m_hProcess, szSymPath);
 
     if (bRet == FALSE) {
         OnDbgHelpErr ("Error while initializing dbghelp.dll", 0, 0);
@@ -638,7 +651,7 @@ BOOL StackWalker::LoadModules () {
         return FALSE;
     }
 
-    bRet = internal ().LoadModules (this, m_hProcess, m_dwProcessId);
+    bRet = internal().LoadModules (this, m_hProcess, m_dwProcessId);
     if (bRet != FALSE)
         m_modulesLoaded = TRUE;
     return bRet;

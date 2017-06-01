@@ -32,37 +32,50 @@ typedef unsigned long SIZE_T, *PSIZE_T;
 #endif // _MSC_VER < 1300
 
 struct Parameter {
-	enum StackWalkerParameter {
-		STACKWALKER_MAX_NAMELEN = 1024,
-		STACKWALKER_MAX_TEMP_BUFFER = 1024,
-		STACKWALKER_INTERNAL_STRUCT_SIZE = 2048
-	}; // max name length for found symbols
+    enum StackWalkerParameter {
+        STACKWALKER_MAX_NAMELEN = 1024,
+        STACKWALKER_MAX_TEMP_BUFFER = 1024,
+        STACKWALKER_INTERNAL_STRUCT_SIZE = 512
+    }; // max name length for found symbols
 };
 
 class StackWalker {
     public:
     typedef enum StackWalkOptions {
-        
 
-        RetrieveNone = 0x0000, // No addition info will be retrieved (only the address is available)      
+
+        RetrieveNone = 0x0000, // No addition info will be retrieved (only the address is available)
         RetrieveSymbol = 0x0001, // Try to get the symbol-name
-        RetrieveLineAndFile = 0x0002, // Try to get the line for this symbol (needs symbol information)
+        RetrieveLineAndFile =
+        0x0002, // Try to get the line for this symbol (needs symbol information)
         RetrieveModuleInfo = 0x0004, // Try to retrieve the module-infos
-        RetrieveFileVersion = 0x0008, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
-		RetrieveSymbolInfo = 0x0010, // Get the symbol flags and the symbol search path
-        RetrieveVerbose = 0x001F,// Contains all the above
+        RetrieveFileVersion =
+        0x0008, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
+        RetrieveSymbolInfo = 0x0010, // Get the symbol flags and the symbol search path
+        RetrieveVerbose = 0x001F,    // Contains all the above
+        LoadModulesOnInit =
+        0x0100, // Load the modules when initializing STackwalker instead of the first ShowCallSTack
         SymBuildPath = 0x1000, // Generate a "good" symbol-search-path
-        SymUseSymSrv = 0x2000,// Also use the public Microsoft-Symbol-Server
-        SymAll = 0x3000,// Contains all the above "Sym"-options
-        OptionsAll = 0x301F // Contains all options (default)
+        SymUseSymSrv = 0x2000, // Also use the public Microsoft-Symbol-Server
+        SymAll = 0x3000,       // Contains all the above "Sym"-options
+        OptionsAll = 0x301F    // Contains all options (default)
     } StackWalkOptions;
 
-    StackWalker (int options = OptionsAll, // 'int' is by design, to combine the enum-flags
+
+    StackWalker (DWORD dwProcessId, HANDLE hProcess);
+
+    StackWalker (int options = OptionsAll,
                  int maxStepDepth = 0,
-                 LPCSTR szSymPath = NULL,
                  DWORD dwProcessId = GetCurrentProcessId (),
                  HANDLE hProcess = GetCurrentProcess ());
-    StackWalker (DWORD dwProcessId, HANDLE hProcess);
+
+    StackWalker (int options,
+                 int maxStepDepth,
+                 LPCSTR szSymPath,
+                 DWORD dwProcessId = GetCurrentProcessId (),
+                 HANDLE hProcess = GetCurrentProcess ());
+
+
     virtual ~StackWalker ();
 
     typedef BOOL (__stdcall *PReadProcessMemoryRoutine) (
@@ -74,7 +87,7 @@ class StackWalker {
     LPVOID pUserData // optional data, which was passed in "ShowCallstack"
     );
 
-    BOOL LoadModules ();
+    BOOL LoadModules (LPCSTR szSymPath = NULL);
 
     BOOL ShowCallstack (HANDLE hThread = GetCurrentThread (),
                         const CONTEXT *context = NULL,
@@ -104,13 +117,19 @@ class StackWalker {
 
     enum CallstackEntryType { firstEntry, nextEntry, lastEntry };
 
-    
-	virtual void OnLoadModule(LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size, DWORD result, LPCSTR symType, LPCSTR pdbName, ULONGLONG fileVersion) = 0;
-	virtual void OnCallstackEntry(CallstackEntryType eType, CallstackEntry &entry) = 0;
-	virtual void OnSymbolInfo(LPCSTR szSearchPath, DWORD symOptions) = 0;
-	virtual void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr) = 0;
 
-	
+    virtual void OnLoadModule (LPCSTR img,
+                               LPCSTR mod,
+                               DWORD64 baseAddr,
+                               DWORD size,
+                               DWORD result,
+                               LPCSTR symType,
+                               LPCSTR pdbName,
+                               ULONGLONG fileVersion) = 0;
+    virtual void OnCallstackEntry (CallstackEntryType eType, CallstackEntry &entry) = 0;
+    virtual void OnSymbolInfo (LPCSTR szSearchPath, DWORD symOptions) = 0;
+    virtual void OnDbgHelpErr (LPCSTR szFuncName, DWORD gle, DWORD64 addr) = 0;
+
 
     HANDLE m_hProcess;
     DWORD m_dwProcessId;
@@ -122,7 +141,7 @@ class StackWalker {
     int m_MaxStackDepth;
 
 
-	static void StrCpy(char *szDest, size_t nMaxDestSize, const char *szSrc);
+    static void StrCpy (char *szDest, size_t nMaxDestSize, const char *szSrc);
     static BOOL __stdcall myReadProcMem (HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead);
 
 
@@ -141,11 +160,34 @@ class StackWalker {
 }; // class StackWalker
 
 class OutputStackWalker : public StackWalker {
-	virtual void OnLoadModule(LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size, DWORD result, LPCSTR symType, LPCSTR pdbName, ULONGLONG fileVersion);
-	virtual void OnCallstackEntry(CallstackEntryType eType, CallstackEntry &entry);
-	virtual void OnSymbolInfo(LPCSTR szSearchPath, DWORD symOptions);
-	virtual void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr);
-	virtual void OnOutput(LPCSTR szText);
+
+    public:
+    OutputStackWalker::OutputStackWalker (DWORD dwProcessId, HANDLE hProcess)
+    : StackWalker (dwProcessId, hProcess) {
+    }
+
+    OutputStackWalker::OutputStackWalker (int options = OptionsAll,
+                                          int maxStackDepth = 0,
+                                          DWORD dwProcessId = GetCurrentProcessId (),
+                                          HANDLE hProcess = GetCurrentProcess ())
+    : StackWalker (options, maxStackDepth, dwProcessId, hProcess) {
+    }
+
+    OutputStackWalker::OutputStackWalker (int options,
+                                          int maxStackDepth,
+                                          LPCSTR szSymPath,
+                                          DWORD dwProcessId = GetCurrentProcessId (),
+                                          HANDLE hProcess = GetCurrentProcess ())
+    : StackWalker (options, maxStackDepth, szSymPath, dwProcessId, hProcess) {
+    }
+
+    protected:
+    virtual void
+    OnLoadModule (LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size, DWORD result, LPCSTR symType, LPCSTR pdbName, ULONGLONG fileVersion);
+    virtual void OnCallstackEntry (CallstackEntryType eType, CallstackEntry &entry);
+    virtual void OnSymbolInfo (LPCSTR szSearchPath, DWORD symOptions);
+    virtual void OnDbgHelpErr (LPCSTR szFuncName, DWORD gle, DWORD64 addr);
+    virtual void OnOutput (LPCSTR szText);
 };
 
 #pragma warning(pop)
