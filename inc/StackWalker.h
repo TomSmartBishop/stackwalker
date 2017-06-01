@@ -46,19 +46,20 @@ class StackWalker {
 
         RetrieveNone = 0x0000, // No addition info will be retrieved (only the address is available)
         RetrieveSymbol = 0x0001, // Try to get the symbol-name
-        RetrieveLineAndFile =
-        0x0002, // Try to get the line for this symbol (needs symbol information)
-        RetrieveModuleInfo = 0x0004, // Try to retrieve the module-infos
-        RetrieveFileVersion =
-        0x0008, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
-        RetrieveSymbolInfo = 0x0010, // Get the symbol flags and the symbol search path
-        RetrieveVerbose = 0x001F,    // Contains all the above
-        LoadModulesOnInit =
-        0x0100, // Load the modules when initializing STackwalker instead of the first ShowCallSTack
+		RetrieveUndecoratedNames = 0x0002,
+        RetrieveLineAndFile = 0x0004, // Try to get the line for this symbol (needs symbol information)
+        RetrieveModuleInfo = 0x0008, // Try to retrieve the module-infos
+        RetrieveFileVersion = 0x0010, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
+        RetrieveSymbolInfo = 0x0020, // Get the symbol flags and the symbol search path
+        
+        LoadModulesOnInit = 0x0100, // Load the modules when initializing STackwalker instead of the first ShowCallSTack
         SymBuildPath = 0x1000, // Generate a "good" symbol-search-path
         SymUseSymSrv = 0x2000, // Also use the public Microsoft-Symbol-Server
         SymAll = 0x3000,       // Contains all the above "Sym"-options
-        OptionsAll = 0x301F    // Contains all options (default)
+        
+		OptionsSlim = 0x0105,
+		OptionsAll = 0xFFFF    // Contains all options (default)
+
     } StackWalkOptions;
 
 

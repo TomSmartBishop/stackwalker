@@ -33,7 +33,7 @@
 // Console (printf):
 class StackWalkerToConsole : public OutputStackWalker {
     public:
-    StackWalkerToConsole () : OutputStackWalker(RetrieveSymbol | RetrieveLineAndFile | LoadModulesOnInit, 7)
+    StackWalkerToConsole () : OutputStackWalker(OptionsSlim, 7)
 	{
     }
 

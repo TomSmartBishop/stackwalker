@@ -767,10 +767,13 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
                                                   &(csEntry.offsetFromSmybol), &sym) != FALSE) {
                 StrCpy (csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
 
-                internal ().pUnDecorateSymbolName (sym.Name, csEntry.undName,
-                                                   Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-                internal ().pUnDecorateSymbolName (sym.Name, csEntry.undFullName,
-                                                   Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+				if (m_options & RetrieveUndecoratedNames)
+				{
+					internal().pUnDecorateSymbolName(sym.Name, csEntry.undName,
+						Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+					internal().pUnDecorateSymbolName(sym.Name, csEntry.undFullName,
+						Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+				}
             } else {
                 OnDbgHelpErr ("SymGetSymFromAddr64", GetLastError (), s.AddrPC.Offset);
             }
