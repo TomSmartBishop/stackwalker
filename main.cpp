@@ -25,11 +25,11 @@
 
 // Specialized stackwalker-output classes
 // Console (printf):
-class StackWalkerToConsole : public StackWalker {
+class StackWalkerToConsole : public OutputStackWalker {
     public:
-    StackWalkerToConsole () : StackWalker () {
-        this->m_options =  RetrieveSymbol | RetrieveLineAndFile | RetrieveModuleInfo | RetrieveFileVersion;
-		//this->m_MaxStackDepth = 9;
+    StackWalkerToConsole () : OutputStackWalker() {
+		this->m_options = RetrieveSymbol | RetrieveLineAndFile;// | RetrieveModuleInfo | RetrieveFileVersion;
+		this->m_MaxStackDepth = 5;
     }
 
     protected:
@@ -37,9 +37,9 @@ class StackWalkerToConsole : public StackWalker {
         printf ("%s", szText);
     }
 
-	void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr) {
-		//nothing for now
-	}
+	//void OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr) {
+	//	//nothing for now
+	//}
 
 	//void OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName) {
 	//	//nothing for now

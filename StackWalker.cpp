@@ -74,9 +74,6 @@ struct StackWalker::Internal {
                                                              DWORD Flags);
     tUnDecorateSymbolName pUnDecorateSymbolName;
 
-    typedef BOOL (__stdcall WINAPI *tSymGetSearchPath) (HANDLE hProcess, PSTR SearchPath, DWORD SearchPathLength);
-    tSymGetSearchPath pSymGetSearchPath;
-
     BOOL GetModuleListTH32 (StackWalker *parent, HANDLE hProcess, DWORD pid) {
 
         typedef HANDLE (__stdcall * tCreateToolhelp32Snapshot) (DWORD dwFlags, DWORD th32ProcessID);
@@ -160,7 +157,7 @@ struct StackWalker::Internal {
         tGetModuleInformation pGetModuleInformation;
 
         DWORD cbNeeded;
-        HMODULE hMods[sizeof (HMODULE) * (STACKWALKER_MAX_TEMP_BUFFER / sizeof (HMODULE))];
+        HMODULE hMods[sizeof (HMODULE) * (Parameter::STACKWALKER_MAX_TEMP_BUFFER / sizeof (HMODULE))];
 
         pEnumProcessModules = (tEnumProcessModules)GetProcAddress (hPsapi, "EnumProcessModules");
         pGetModuleFileNameExA =
@@ -171,15 +168,15 @@ struct StackWalker::Internal {
 
         if ((pEnumProcessModules == NULL) || (pGetModuleFileNameExA == NULL) ||
             (pGetModuleBaseNameA == NULL) || (pGetModuleInformation == NULL) ||
-            !pEnumProcessModules (hProcess, hMods, STACKWALKER_MAX_TEMP_BUFFER, &cbNeeded) ||
-            cbNeeded > STACKWALKER_MAX_TEMP_BUFFER) {
+            !pEnumProcessModules (hProcess, hMods, Parameter::STACKWALKER_MAX_TEMP_BUFFER, &cbNeeded) ||
+            cbNeeded > Parameter::STACKWALKER_MAX_TEMP_BUFFER) {
             // we couldn't find all functions
             FreeLibrary (hPsapi);
             return FALSE;
         }
 
-        char imageFileName[STACKWALKER_MAX_TEMP_BUFFER];
-        char moduleFileName[STACKWALKER_MAX_TEMP_BUFFER];
+        char imageFileName[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
+        char moduleFileName[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
         int count = 0;
         MODULEINFO moduleInfo;
 
@@ -188,10 +185,10 @@ struct StackWalker::Internal {
             pGetModuleInformation (hProcess, hMods[i], &moduleInfo, sizeof moduleInfo);
             // image file name
             imageFileName[0] = 0;
-            pGetModuleFileNameExA (hProcess, hMods[i], imageFileName, STACKWALKER_MAX_TEMP_BUFFER);
+            pGetModuleFileNameExA (hProcess, hMods[i], imageFileName, Parameter::STACKWALKER_MAX_TEMP_BUFFER);
             // module name
             moduleFileName[0] = 0;
-            pGetModuleBaseNameA (hProcess, hMods[i], moduleFileName, STACKWALKER_MAX_TEMP_BUFFER);
+            pGetModuleBaseNameA (hProcess, hMods[i], moduleFileName, Parameter::STACKWALKER_MAX_TEMP_BUFFER);
 
             DWORD dwRes = LoadModule (parent, hProcess, imageFileName, moduleFileName,
                                       (DWORD64)moduleInfo.lpBaseOfDll, moduleInfo.SizeOfImage);
@@ -204,12 +201,12 @@ struct StackWalker::Internal {
     } // GetModuleListPSAPI
 
     DWORD LoadModule (StackWalker *parent, HANDLE hProcess, LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size) {
-        CHAR szImg[STACKWALKER_MAX_TEMP_BUFFER];
-        CHAR szMod[STACKWALKER_MAX_TEMP_BUFFER];
-        SW_ASSERT (strlen (img) < STACKWALKER_MAX_TEMP_BUFFER,
+        CHAR szImg[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
+        CHAR szMod[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
+        SW_ASSERT (strlen (img) < Parameter::STACKWALKER_MAX_TEMP_BUFFER,
                    "Image name buffer size not sufficient");
         memcpy (szImg, img, strlen (img) + 1);
-        SW_ASSERT (strlen (img) < STACKWALKER_MAX_TEMP_BUFFER,
+        SW_ASSERT (strlen (img) < Parameter::STACKWALKER_MAX_TEMP_BUFFER,
                    "Module name buffer size not sufficient");
         memcpy (szMod, mod, strlen (mod) + 1);
 
@@ -284,10 +281,7 @@ struct StackWalker::Internal {
                 parent->OnLoadModule (img, mod, baseAddr, size, result, szSymType, pdbName, fileVersion);
             }
         }
-        // if (szImg != NULL)
-        //	free(szImg);
-        // if (szMod != NULL)
-        //	free(szMod);
+
         return result;
     }
 
@@ -304,7 +298,7 @@ struct StackWalker::Internal {
 
     BOOL Init (StackWalker *parent, HANDLE hProcess, LPCSTR szSymPath) {
 
-        static_assert (sizeof (Internal) < STACKWALKERINTERNAL_STRUCT_SIZE, "Increase buffer size");
+        static_assert (sizeof (Internal) < Parameter::STACKWALKER_INTERNAL_STRUCT_SIZE, "Increase buffer size");
 
         if (parent == NULL)
             return FALSE;
@@ -324,20 +318,19 @@ struct StackWalker::Internal {
         pSymSetOptions = NULL;
         pStackWalk64 = NULL;
         pUnDecorateSymbolName = NULL;
-        pSymGetSearchPath = NULL;
 
         // Dynamically load the Entry-Points for dbghelp.dll:
         // First try to load the newest one from
-        TCHAR szTemp[StackWalker::STACKWALKER_MAX_TEMP_BUFFER];
+        TCHAR szTemp[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
         // But before we do this, we first check if the ".local" file exists
-        if (GetModuleFileName (NULL, szTemp, StackWalker::STACKWALKER_MAX_TEMP_BUFFER) > 0) {
+        if (GetModuleFileName (NULL, szTemp, Parameter::STACKWALKER_MAX_TEMP_BUFFER) > 0) {
             _tcscat_s (szTemp, _T(".local"));
             if (GetFileAttributes (szTemp) == INVALID_FILE_ATTRIBUTES) {
                 // ".local" file does not exist, so we can try to load the dbghelp.dll from the
                 // "Debugging Tools for Windows" Ok, first try the new path according to the
                 // architecture:
                 DWORD result = GetEnvironmentVariable (_T("ProgramFiles"), szTemp,
-                                                       StackWalker::STACKWALKER_MAX_TEMP_BUFFER);
+                                                       Parameter::STACKWALKER_MAX_TEMP_BUFFER);
                 int idx = 0;
                 while (result > 0 && dbg_help_path[idx][0] != 0) {
                     _tcscat_s (szTemp, dbg_help_path[idx]);
@@ -374,7 +367,7 @@ struct StackWalker::Internal {
         pUnDecorateSymbolName =
         (tUnDecorateSymbolName)GetProcAddress (m_hDbhHelp, "UnDecorateSymbolName");
         pSymLoadModule64 = (tSymLoadModule64)GetProcAddress (m_hDbhHelp, "SymLoadModule64");
-        pSymGetSearchPath = (tSymGetSearchPath)GetProcAddress (m_hDbhHelp, "SymGetSearchPath");
+        
 
         if (pSymCleanup == NULL || pSymFunctionTableAccess64 == NULL ||
             pSymGetModuleBase64 == NULL || pSymGetModuleInfo64 == NULL || pSymGetOptions == NULL ||
@@ -392,31 +385,36 @@ struct StackWalker::Internal {
         if (pSymInitialize (m_hProcess, m_szSymPath, FALSE) == FALSE)
             parent->OnDbgHelpErr ("SymInitialize", GetLastError (), 0);
 
-        DWORD symOptions = pSymGetOptions (); // SymGetOptions
-        symOptions |= SYMOPT_LOAD_LINES;
-        symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS;
-        // symOptions |= SYMOPT_NO_PROMPTS;
-        // SymSetOptions
+        DWORD symOptions = pSymGetOptions();
+		if (parent->m_options & RetrieveLineAndFile)
+		{
+			symOptions |= SYMOPT_LOAD_LINES;
+		}
+        symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS; //Do not display system dialog boxes when there is a media failure 
+        // symOptions |= SYMOPT_NO_PROMPTS; //Prevents prompting for validation from the symbol server.
+
         symOptions = pSymSetOptions (symOptions);
 
-        char buf[StackWalker::STACKWALKER_MAX_NAMELEN] = { 0 };
-        if (pSymGetSearchPath != NULL) {
-            if (pSymGetSearchPath (m_hProcess, buf, StackWalker::STACKWALKER_MAX_NAMELEN) == FALSE)
-                parent->OnDbgHelpErr ("SymGetSearchPath", GetLastError (), 0);
-        }
-        if (parent->m_options & StackWalker::RetrieveSystemInfo) {
-            char szUserName[1024] = { 0 };
-            DWORD dwSize = 1024;
-            GetUserNameA (szUserName, &dwSize);
-            parent->OnSymInit (buf, symOptions, szUserName);
+        
+        if (parent->m_options & StackWalker::RetrieveSymbolInfo) {
+
+			char searchPath[Parameter::STACKWALKER_MAX_NAMELEN] = { 0 };
+			typedef BOOL(__stdcall WINAPI *tSymGetSearchPath) (HANDLE hProcess, PSTR SearchPath, DWORD SearchPathLength);
+			tSymGetSearchPath pSymGetSearchPath = (tSymGetSearchPath)GetProcAddress(m_hDbhHelp, "SymGetSearchPath");
+
+			if (pSymGetSearchPath != NULL) {
+				if (pSymGetSearchPath(m_hProcess, searchPath, Parameter::STACKWALKER_MAX_NAMELEN) == FALSE)
+					parent->OnDbgHelpErr("SymGetSearchPath", GetLastError(), 0);
+			}
+
+            parent->OnSymbolInfo(searchPath, symOptions);
         }
         return TRUE;
     }
     BOOL LoadModules (StackWalker *parent, HANDLE hProcess, DWORD dwProcessId) {
-        // first try toolhelp32
         if (GetModuleListTH32 (parent, hProcess, dwProcessId))
             return true;
-        // then try psapi
+        // try psapi as backup
         return GetModuleListPSAPI (parent, hProcess);
     }
 
@@ -461,7 +459,7 @@ struct StackWalker::Internal {
 
     HMODULE m_hDbhHelp;
     HANDLE m_hProcess;
-    CHAR m_szSymPath[StackWalker::STACKWALKER_MAX_TEMP_BUFFER];
+    CHAR m_szSymPath[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
 };
 
 const wchar_t *StackWalker::Internal::dbg_help_path[] =
@@ -514,15 +512,16 @@ static void ArchSetup (const CONTEXT &c, STACKFRAME64 &s, DWORD &imageType) {
 }
 
 
-static void MyStrCpy (char *szDest, size_t nMaxDestSize, const char *szSrc) {
-    if (nMaxDestSize <= 0)
-        return;
-    if (strlen (szSrc) < nMaxDestSize) {
-        strcpy_s (szDest, nMaxDestSize, szSrc);
-    } else {
-        strncpy_s (szDest, nMaxDestSize, szSrc, nMaxDestSize);
-        szDest[nMaxDestSize - 1] = 0;
-    }
+void StackWalker::StrCpy(char *szDest, size_t nMaxDestSize, const char *szSrc) {
+	if (nMaxDestSize <= 0)
+		return;
+	if (strlen(szSrc) < nMaxDestSize) {
+		strcpy_s(szDest, nMaxDestSize, szSrc);
+	}
+	else {
+		strncpy_s(szDest, nMaxDestSize, szSrc, nMaxDestSize);
+		szDest[nMaxDestSize - 1] = 0;
+	}
 } // MyStrCpy
 
 // #############################################################
@@ -560,7 +559,7 @@ BOOL StackWalker::LoadModules () {
         return TRUE;
 
     // Build the sym-path:
-    const size_t nSymPathLen = STACKWALKER_MAX_TEMP_BUFFER;
+    const size_t nSymPathLen = Parameter::STACKWALKER_MAX_TEMP_BUFFER;
     char szSymPath[nSymPathLen];
     szSymPath[0] = 0;
 
@@ -654,7 +653,7 @@ static StackWalker::PReadProcessMemoryRoutine s_readMemoryFunction = NULL;
 static LPVOID s_readMemoryFunction_UserData = NULL;
 
 struct IMAGEHLP_SYMBOL64_WITH_NAME : IMAGEHLP_SYMBOL64 {
-    static const size_t BUFFER_LEN = StackWalker::STACKWALKER_MAX_NAMELEN;
+    static const size_t BUFFER_LEN = Parameter::STACKWALKER_MAX_NAMELEN;
     char buffer[BUFFER_LEN];
 };
 
@@ -705,7 +704,7 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
 
     memset (&sym, 0, sizeof (IMAGEHLP_SYMBOL64_WITH_NAME));
     sym.SizeOfStruct = sizeof (IMAGEHLP_SYMBOL64);
-    sym.MaxNameLength = STACKWALKER_MAX_NAMELEN;
+    sym.MaxNameLength = Parameter::STACKWALKER_MAX_NAMELEN;
 
     memset (&Line, 0, sizeof (Line));
     Line.SizeOfStruct = sizeof (Line);
@@ -753,12 +752,12 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             // show procedure info (SymGetSymFromAddr64())
             if (internal ().pSymGetSymFromAddr64 (m_hProcess, s.AddrPC.Offset,
                                                   &(csEntry.offsetFromSmybol), &sym) != FALSE) {
-                MyStrCpy (csEntry.name, STACKWALKER_MAX_NAMELEN, sym.Name);
+                StrCpy (csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
 
                 internal ().pUnDecorateSymbolName (sym.Name, csEntry.undName,
-                                                   STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+                                                   Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
                 internal ().pUnDecorateSymbolName (sym.Name, csEntry.undFullName,
-                                                   STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+                                                   Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
             } else {
                 OnDbgHelpErr ("SymGetSymFromAddr64", GetLastError (), s.AddrPC.Offset);
             }
@@ -768,7 +767,7 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
                 if (internal ().pSymGetLineFromAddr64 (m_hProcess, s.AddrPC.Offset,
                                                        &(csEntry.offsetFromLine), &Line) != FALSE) {
                     csEntry.lineNumber = Line.LineNumber;
-                    MyStrCpy (csEntry.lineFileName, STACKWALKER_MAX_NAMELEN, Line.FileName);
+                    StrCpy (csEntry.lineFileName, Parameter::STACKWALKER_MAX_NAMELEN, Line.FileName);
                 } else {
                     OnDbgHelpErr ("SymGetLineFromAddr64", GetLastError (), s.AddrPC.Offset);
                 }
@@ -814,9 +813,9 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
                             break;
                     }
 
-                    MyStrCpy (csEntry.moduleName, STACKWALKER_MAX_NAMELEN, Module.ModuleName);
+                    StrCpy (csEntry.moduleName, Parameter::STACKWALKER_MAX_NAMELEN, Module.ModuleName);
                     csEntry.baseOfImage = Module.BaseOfImage;
-                    MyStrCpy (csEntry.loadedImageName, STACKWALKER_MAX_NAMELEN, Module.LoadedImageName);
+                    StrCpy (csEntry.loadedImageName, Parameter::STACKWALKER_MAX_NAMELEN, Module.LoadedImageName);
                 } // got module info OK
                 else {
                     OnDbgHelpErr ("SymGetModuleInfo64", GetLastError (), s.AddrPC.Offset);
@@ -862,89 +861,3 @@ BOOL __stdcall StackWalker::myReadProcMem (HANDLE hProcess, DWORD64 qwBaseAddres
     }
 }
 
-void StackWalker::OnLoadModule (LPCSTR img,
-                                LPCSTR mod,
-                                DWORD64 baseAddr,
-                                DWORD size,
-                                DWORD result,
-                                LPCSTR symType,
-                                LPCSTR pdbName,
-                                ULONGLONG fileVersion) {
-    CHAR buffer[STACKWALKER_MAX_NAMELEN];
-    if (fileVersion == 0)
-        _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "%s:%s (%p), size: %d (result: %d), SymType: '%s', PDB: '%s'\n",
-                     img, mod, (LPVOID)baseAddr, size, result, symType, pdbName);
-    else {
-        DWORD v4 = (DWORD) (fileVersion & 0xFFFF);
-        DWORD v3 = (DWORD) ((fileVersion >> 16) & 0xFFFF);
-        DWORD v2 = (DWORD) ((fileVersion >> 32) & 0xFFFF);
-        DWORD v1 = (DWORD) ((fileVersion >> 48) & 0xFFFF);
-        _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN,
-                     "%s:%s (%p), size: %d (result: %d), SymType: '%s', PDB: '%s', "
-                     "fileVersion: %d.%d.%d.%d\n",
-                     img, mod, (LPVOID)baseAddr, size, result, symType, pdbName, v1, v2, v3, v4);
-    }
-    OnOutput (buffer);
-}
-
-void StackWalker::OnCallstackEntry (CallstackEntryType eType, CallstackEntry &entry) {
-    CHAR buffer[STACKWALKER_MAX_NAMELEN];
-    if ((eType != lastEntry) && (entry.offset != 0)) {
-        if (entry.name[0] == 0)
-            MyStrCpy (entry.name, STACKWALKER_MAX_NAMELEN, "(function-name not available)");
-        if (entry.undName[0] != 0)
-            MyStrCpy (entry.name, STACKWALKER_MAX_NAMELEN, entry.undName);
-        if (entry.undFullName[0] != 0)
-            MyStrCpy (entry.name, STACKWALKER_MAX_NAMELEN, entry.undFullName);
-        if (entry.lineFileName[0] == 0) {
-            MyStrCpy (entry.lineFileName, STACKWALKER_MAX_NAMELEN, "(filename not available)");
-            if (entry.moduleName[0] == 0)
-                MyStrCpy (entry.moduleName, STACKWALKER_MAX_NAMELEN, "(module-name not available)");
-            _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "%p (%s): %s: %s\n", (LPVOID)entry.offset,
-                         entry.moduleName, entry.lineFileName, entry.name);
-        } else
-            _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "%s (%d): %s\n", entry.lineFileName,
-                         entry.lineNumber, entry.name);
-        buffer[STACKWALKER_MAX_NAMELEN - 1] = 0;
-        OnOutput (buffer);
-    }
-}
-
-void StackWalker::OnDbgHelpErr (LPCSTR szFuncName, DWORD gle, DWORD64 addr) {
-    CHAR buffer[STACKWALKER_MAX_NAMELEN];
-    _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "ERROR: %s, GetLastError: %d (Address: %p)\n",
-                 szFuncName, gle, (LPVOID)addr);
-    OnOutput (buffer);
-}
-
-void StackWalker::OnSymInit (LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName) {
-    CHAR buffer[STACKWALKER_MAX_NAMELEN];
-    _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "SymInit: Symbol-SearchPath: '%s', symOptions: %d, UserName: '%s'\n",
-                 szSearchPath, symOptions, szUserName);
-    OnOutput (buffer);
-// Also display the OS-version
-#if _MSC_VER <= 1200
-    OSVERSIONINFOA ver;
-    ZeroMemory (&ver, sizeof (OSVERSIONINFOA));
-    ver.dwOSVersionInfoSize = sizeof (ver);
-    if (GetVersionExA (&ver) != FALSE) {
-        _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "OS-Version: %d.%d.%d (%s)\n",
-                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion);
-        OnOutput (buffer);
-    }
-#else
-    OSVERSIONINFOEXA ver;
-    ZeroMemory (&ver, sizeof (OSVERSIONINFOEXA));
-    ver.dwOSVersionInfoSize = sizeof (ver);
-    if (GetVersionExA ((OSVERSIONINFOA *)&ver) != FALSE) {
-        _snprintf_s (buffer, STACKWALKER_MAX_NAMELEN, "OS-Version: %d.%d.%d (%s) 0x%x-0x%x\n",
-                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion,
-                     ver.wSuiteMask, ver.wProductType);
-        OnOutput (buffer);
-    }
-#endif
-}
-
-void StackWalker::OnOutput (LPCSTR buffer) {
-    OutputDebugStringA (buffer);
-}
