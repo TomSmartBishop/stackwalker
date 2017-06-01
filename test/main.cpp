@@ -10,7 +10,13 @@
  *
  **********************************************************************/
 
-#include "pch/pch.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <windows.h>
+#include <tchar.h>
+#include "../inc/StackWalker.h"
+
 
 #define UNHANDLED_EXCEPTION_TEST
 #define EXCEPTION_FILTER_TEST

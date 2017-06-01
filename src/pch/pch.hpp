@@ -14,4 +14,4 @@
 #endif
 
 #include "../DebugHelp.h"
-#include "../StackWalker.h"
+#include "../../inc/StackWalker.h"
