@@ -202,8 +202,13 @@ struct StackWalker::Internal {
 	} // GetModuleListPSAPI
 
 	DWORD LoadModule(StackWalker *parent, HANDLE hProcess, LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size) {
-		CHAR szImg[STACKWALKER_MAX_TEMP_BUFFER];// = _strdup(img);
-		CHAR szMod[STACKWALKER_MAX_TEMP_BUFFER];// = _strdup(mod);
+		CHAR szImg[STACKWALKER_MAX_TEMP_BUFFER];
+		CHAR szMod[STACKWALKER_MAX_TEMP_BUFFER];
+		SW_ASSERT(strlen(img) < STACKWALKER_MAX_TEMP_BUFFER, "Image name buffer size not sufficient");
+		memcpy(szImg, img, strlen(img) + 1);
+		SW_ASSERT(strlen(img) < STACKWALKER_MAX_TEMP_BUFFER, "Module name buffer size not sufficient");
+		memcpy(szMod, mod, strlen(mod) + 1);
+
 		DWORD result = ERROR_SUCCESS;
 		if (pSLM(hProcess, 0, szImg, szMod, baseAddr, size) == 0)
 		{
