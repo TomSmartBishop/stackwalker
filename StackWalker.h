@@ -16,7 +16,6 @@
 #pragma once
 
 
-
 #pragma comment(lib, "version.lib") // for "VerQueryValue"
 #pragma warning(push)
 #pragma warning(disable : 4826)
@@ -52,8 +51,8 @@ class StackWalker {
         // Also retrieve the version for the DLL/EXE
         RetrieveFileVersion = 0x0008,
 
-		// Get system info
-		RetrieveSystemInfo = 0x0010,
+        // Get system info
+        RetrieveSystemInfo = 0x0010,
 
         // Contains all the above
         RetrieveVerbose = 0x001F,
@@ -72,7 +71,7 @@ class StackWalker {
     } StackWalkOptions;
 
     StackWalker (int options = OptionsAll, // 'int' is by design, to combine the enum-flags
-				 int maxStepDepth = 0,
+                 int maxStepDepth = 0,
                  LPCSTR szSymPath = NULL,
                  DWORD dwProcessId = GetCurrentProcessId (),
                  HANDLE hProcess = GetCurrentProcess ());
@@ -96,12 +95,12 @@ class StackWalker {
                         LPVOID pUserData = NULL // optional to identify some data
                                                 // in the
                                                 // 'readMemoryFunction'-callback
-                        );
+    );
 
-	enum {
-		STACKWALKER_MAX_NAMELEN = 1024,
-		STACKWALKER_MAX_TEMP_BUFFER = 1024,
-		STACKWALKERINTERNAL_STRUCT_SIZE = 2048
+    enum {
+        STACKWALKER_MAX_NAMELEN = 1024,
+        STACKWALKER_MAX_TEMP_BUFFER = 1024,
+        STACKWALKERINTERNAL_STRUCT_SIZE = 2048
     }; // max name length for found symbols
 
     protected:
@@ -138,18 +137,22 @@ class StackWalker {
 
     int m_options;
     int m_MaxRecursionCount;
-	int m_MaxStackDepth;
+    int m_MaxStackDepth;
 
     static BOOL __stdcall myReadProcMem (HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead);
 
 
-private:
-	struct Internal;
+    private:
+    struct Internal;
 
-	Internal& internal() { return reinterpret_cast<Internal&>(m_storage); }
-	Internal const& internal() const { return reinterpret_cast<Internal const&>(m_storage); }
+    Internal &internal () {
+        return reinterpret_cast<Internal &> (m_storage);
+    }
+    Internal const &internal () const {
+        return reinterpret_cast<Internal const &> (m_storage);
+    }
 
-	char m_storage[STACKWALKERINTERNAL_STRUCT_SIZE];
+    char m_storage[STACKWALKERINTERNAL_STRUCT_SIZE];
 
 }; // class StackWalker
 
