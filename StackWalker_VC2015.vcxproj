@@ -170,7 +170,7 @@
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|Itanium'">lib\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|Itanium'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|x64'">lib\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|x64'">lib\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|x64'">int\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015|x64'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|Win32'">lib\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|Win32'">lib\$(Platform)\$(Configuration)\</IntDir>
@@ -179,7 +179,7 @@
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|Itanium'">lib\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|Itanium'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|x64'">lib\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|x64'">lib\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|x64'">int\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VC2015|x64'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Win32'">lib\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Win32'">lib\$(Platform)\$(Configuration)\</IntDir>
@@ -188,7 +188,7 @@
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Itanium'">lib\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Itanium'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">lib\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">lib\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">int\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|x64'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|Win32'">lib\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|Win32'">lib\$(Platform)\$(Configuration)\</IntDir>
@@ -197,7 +197,7 @@
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|Itanium'">lib\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|Itanium'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|x64'">lib\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|x64'">lib\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|x64'">int\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VC2015-UNICODE|x64'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Itanium'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug_VC2015-UNICODE|Itanium'" />
