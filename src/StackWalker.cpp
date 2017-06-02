@@ -331,7 +331,7 @@ struct StackWalker::Internal {
                                                        Parameter::STACKWALKER_MAX_TEMP_BUFFER);
                 int idx = 0;
 
-				const wchar_t * dbg_help_path[] =
+				const TCHAR * dbg_help_path[] =
 				{
 					_T("\\Debugging Tools for Windows\\dbghelp.dll"),
 #ifdef _M_IX86
@@ -734,9 +734,9 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
         // that the stack is so hosed that the next deeper frame could not be
         // found. CONTEXT need not to be supplied if imageTyp is
         // IMAGE_FILE_MACHINE_I386!
-        if (!internal ().pStackWalk64 (imageType, m_hProcess, hThread, &s, &c, myReadProcMem,
-                                       internal ().pSymFunctionTableAccess64,
-                                       internal ().pSymGetModuleBase64, NULL)) {
+        if (!internal().pStackWalk64 (imageType, m_hProcess, hThread, &s, &c, myReadProcMem,
+                                       internal().pSymFunctionTableAccess64,
+                                       internal().pSymGetModuleBase64, NULL)) {
             // INFO: "StackWalk64" does not set "GetLastError"...
             OnDbgHelpErr ("StackWalk64", 0, s.AddrPC.Offset);
             break;
@@ -760,30 +760,36 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             curRecursionCount++;
         } else
             curRecursionCount = 0;
-        if ((m_options & RetrieveSymbol) && s.AddrPC.Offset != 0) {
-            // we seem to have a valid PC
-            // show procedure info (SymGetSymFromAddr64())
-            if (internal ().pSymGetSymFromAddr64 (m_hProcess, s.AddrPC.Offset,
-                                                  &(csEntry.offsetFromSmybol), &sym) != FALSE) {
-                StrCpy (csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
 
-				if (m_options & RetrieveUndecoratedNames)
-				{
-					internal().pUnDecorateSymbolName(sym.Name, csEntry.undName,
-						Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-					internal().pUnDecorateSymbolName(sym.Name, csEntry.undFullName,
-						Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+		if(s.AddrPC.Offset != 0)
+		{
+			if (m_options & RetrieveSymbol)
+			{
+				// we seem to have a valid PC
+				// show procedure info (SymGetSymFromAddr64())
+				if (internal().pSymGetSymFromAddr64(m_hProcess, s.AddrPC.Offset,
+					&(csEntry.offsetFromSmybol), &sym) != FALSE) {
+					StrCpy(csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
+
+					if (m_options & RetrieveUndecoratedNames)
+					{
+						internal().pUnDecorateSymbolName(sym.Name, csEntry.undName,
+							Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+						internal().pUnDecorateSymbolName(sym.Name, csEntry.undFullName,
+							Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+					}
 				}
-            } else {
-                OnDbgHelpErr ("SymGetSymFromAddr64", GetLastError (), s.AddrPC.Offset);
-            }
-
+				else {
+					OnDbgHelpErr("SymGetSymFromAddr64", GetLastError(), s.AddrPC.Offset);
+				}
+			}
             // show line number info, NT5.0-method (SymGetLineFromAddr64())
-            if ((m_options & RetrieveLineAndFile) && internal ().pSymGetLineFromAddr64 != NULL) { // yes, we have SymGetLineFromAddr64()
-                if (internal ().pSymGetLineFromAddr64 (m_hProcess, s.AddrPC.Offset,
+            if ((m_options & RetrieveLineAndFile) && internal().pSymGetLineFromAddr64 != NULL) { // yes, we have SymGetLineFromAddr64()
+                if (internal().pSymGetLineFromAddr64 (m_hProcess, s.AddrPC.Offset,
                                                        &(csEntry.offsetFromLine), &Line) != FALSE) {
                     csEntry.lineNumber = Line.LineNumber;
-                    StrCpy (csEntry.lineFileName, Parameter::STACKWALKER_MAX_NAMELEN, Line.FileName);
+					if((m_options & RetrieveLineAndFile) == RetrieveLineAndFile)
+						StrCpy (csEntry.lineFileName, Parameter::STACKWALKER_MAX_NAMELEN, Line.FileName);
                 } else {
                     OnDbgHelpErr ("SymGetLineFromAddr64", GetLastError (), s.AddrPC.Offset);
                 }
@@ -791,7 +797,7 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
 
             // show module info (SymGetModuleInfo64())
             if ((m_options & RetrieveModuleInfo)) {
-                if (internal ().GetModuleInfo (m_hProcess, s.AddrPC.Offset, &Module) != FALSE) { // got module info OK
+                if (internal().GetModuleInfo (m_hProcess, s.AddrPC.Offset, &Module) != FALSE) { // got module info OK
                     switch (Module.SymType) {
                         case SymNone:
                             csEntry.symTypeString = "-nosymbols-";

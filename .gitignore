@@ -4,3 +4,5 @@ ipch/
 *.db
 *.sdf
 *.filters
+int/
+lib/

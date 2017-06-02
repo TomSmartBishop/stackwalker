@@ -44,21 +44,21 @@ class StackWalker {
     typedef enum StackWalkOptions {
 
 
-        RetrieveNone = 0x0000, // No addition info will be retrieved (only the address is available)
-        RetrieveSymbol = 0x0001, // Try to get the symbol-name
-		RetrieveUndecoratedNames = 0x0002,
-        RetrieveLineAndFile = 0x0004, // Try to get the line for this symbol (needs symbol information)
-        RetrieveModuleInfo = 0x0008, // Try to retrieve the module-infos
-        RetrieveFileVersion = 0x0010, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
-        RetrieveSymbolInfo = 0x0020, // Get the symbol flags and the symbol search path
+        RetrieveNone			 = 0x0000, // No addition info will be retrieved (only the address is available)
+        RetrieveSymbol			 = 0x0002, // Try to get the symbol-name
+		RetrieveUndecoratedNames = 0x0004,
+		RetrieveLine			 = 0x0001, // Try to get the line number
+        RetrieveLineAndFile		 = 0x0009, // Try to get the line number and filename
+        RetrieveModuleInfo		 = 0x0010, // Try to retrieve the module-infos
+        RetrieveFileVersion		 = 0x0020, // Also retrieve the version for the DLL/EXE (will allocate dynamic memory)
+        RetrieveSymbolInfo		 = 0x0040, // Get the symbol flags and the symbol search path
         
-        LoadModulesOnInit = 0x0100, // Load the modules when initializing STackwalker instead of the first ShowCallSTack
-        SymBuildPath = 0x1000, // Generate a "good" symbol-search-path
-        SymUseSymSrv = 0x2000, // Also use the public Microsoft-Symbol-Server
-        SymAll = 0x3000,       // Contains all the above "Sym"-options
+        LoadModulesOnInit		 = 0x0100, // Load the modules when initializing STackwalker instead of the first ShowCallSTack
+        SymBuildPath			 = 0x1000, // Generate a "good" symbol-search-path
+        SymUseSymSrv			 = 0x2000, // Also use the public Microsoft-Symbol-Server
         
-		OptionsSlim = 0x0105,
-		OptionsAll = 0xFFFF    // Contains all options (default)
+		OptionsSlim				 = 0x0109,
+		OptionsAll				 = 0xFFFF  // Contains all options (default)
 
     } StackWalkOptions;
 
