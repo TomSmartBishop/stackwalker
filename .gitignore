@@ -6,3 +6,4 @@ ipch/
 *.filters
 int/
 lib/
+.vs/

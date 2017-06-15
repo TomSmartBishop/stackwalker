@@ -511,56 +511,46 @@ static void ArchSetup (const CONTEXT &c, STACKFRAME64 &s, DWORD &imageType) {
 #endif
 }
 
-
-void StackWalker::StrCpy(char *szDest, size_t nMaxDestSize, const char *szSrc) {
-	if (nMaxDestSize <= 0)
-		return;
-	if (strlen(szSrc) < nMaxDestSize) {
-		strcpy_s(szDest, nMaxDestSize, szSrc);
-	}
-	else {
-		strncpy_s(szDest, nMaxDestSize, szSrc, nMaxDestSize);
-		szDest[nMaxDestSize - 1] = 0;
-	}
-} // MyStrCpy
-
 // #############################################################
 StackWalker::StackWalker (DWORD dwProcessId, HANDLE hProcess)
  : m_options(OptionsAll)
- , m_MaxStackDepth(0)
+ , m_minStackDepth(0)
+ , m_maxStackDepth(0)
  , m_modulesLoaded(FALSE)
  , m_hProcess(hProcess)
  , m_dwProcessId(dwProcessId)
- , m_MaxRecursionCount(1000)
+ , m_maxRecursionCount(1000)
 {
 
-	if(m_options&LoadModulesOnInit)
-		LoadModules();
+	//if(m_options&LoadModulesOnInit)
+	//	LoadModules();
 }
 
-StackWalker::StackWalker(int options, int maxStackDepth, DWORD dwProcessId, HANDLE hProcess)
+StackWalker::StackWalker(int options, int minStackDepth, int maxStackDepth, DWORD dwProcessId, HANDLE hProcess)
 	: m_options(options)
-	, m_MaxStackDepth(maxStackDepth)
+	, m_minStackDepth(minStackDepth)
+	, m_maxStackDepth(maxStackDepth)
 	, m_modulesLoaded(FALSE)
 	, m_hProcess(hProcess)
 	, m_dwProcessId(dwProcessId)
-	, m_MaxRecursionCount(1000)
+	, m_maxRecursionCount(1000)
 {
-	if (m_options&LoadModulesOnInit)
-		LoadModules();
+	//if (m_options&LoadModulesOnInit)
+	//	LoadModules();
 }
 
-StackWalker::StackWalker (int options, int maxStackDepth, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess)
+StackWalker::StackWalker (int options, int minStackDepth, int maxStackDepth, LPCSTR szSymPath, DWORD dwProcessId, HANDLE hProcess)
 	: m_options(options)
-		, m_MaxStackDepth(maxStackDepth)
-		, m_modulesLoaded(FALSE)
-		, m_hProcess(hProcess)
-		, m_dwProcessId(dwProcessId)
-		, m_MaxRecursionCount(1000)
+	, m_minStackDepth(minStackDepth)
+	, m_maxStackDepth(maxStackDepth)
+	, m_modulesLoaded(FALSE)
+	, m_hProcess(hProcess)
+	, m_dwProcessId(dwProcessId)
+	, m_maxRecursionCount(1000)
 {
 
-	m_options |= LoadModulesOnInit;
-	LoadModules(szSymPath);
+	//m_options |= LoadModulesOnInit;
+	//LoadModules(szSymPath);
 }
 
 StackWalker::~StackWalker () {
@@ -670,15 +660,15 @@ struct IMAGEHLP_SYMBOL64_WITH_NAME : IMAGEHLP_SYMBOL64 {
     char buffer[BUFFER_LEN];
 };
 
-BOOL StackWalker::ShowCallstack (HANDLE hThread,
+BOOL StackWalker::Walk (HANDLE hThread,
                                  const CONTEXT *context,
                                  PReadProcessMemoryRoutine readMemoryFunction,
                                  LPVOID pUserData) {
     CONTEXT c;
     CallstackEntry csEntry;
     IMAGEHLP_SYMBOL64_WITH_NAME sym;
-    IMAGEHLP_MODULE64_V3 Module;
-    IMAGEHLP_LINE64 Line;
+    IMAGEHLP_MODULE64_V3 module;
+    IMAGEHLP_LINE64 line;
     int frameNum;
     bool bLastEntryCalled = true;
     int curRecursionCount = 0;
@@ -719,14 +709,14 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
     sym.SizeOfStruct = sizeof (IMAGEHLP_SYMBOL64);
     sym.MaxNameLength = Parameter::STACKWALKER_MAX_NAMELEN;
 
-    memset (&Line, 0, sizeof (Line));
-    Line.SizeOfStruct = sizeof (Line);
+    memset (&line, 0, sizeof (line));
+    line.SizeOfStruct = sizeof (line);
 
-    memset (&Module, 0, sizeof (Module));
-    Module.SizeOfStruct = sizeof (Module);
+    memset (&module, 0, sizeof (module));
+    module.SizeOfStruct = sizeof (module);
 
     for (frameNum = 0;; ++frameNum) {
-        if (m_MaxStackDepth > 0 && frameNum >= m_MaxStackDepth)
+        if (m_maxStackDepth > 0 && frameNum >= m_maxStackDepth)
             break;
         // get next stack frame (StackWalk64(), SymFunctionTableAccess64(),
         // SymGetModuleBase64()) if this returns ERROR_INVALID_ADDRESS (487) or
@@ -742,24 +732,21 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             break;
         }
 
-        csEntry.offset = s.AddrPC.Offset;
-        csEntry.name[0] = 0;
-        csEntry.undName[0] = 0;
-        csEntry.undFullName[0] = 0;
-        csEntry.offsetFromSmybol = 0;
-        csEntry.offsetFromLine = 0;
-        csEntry.lineFileName[0] = 0;
-        csEntry.lineNumber = 0;
-        csEntry.loadedImageName[0] = 0;
-        csEntry.moduleName[0] = 0;
+        
+
         if (s.AddrPC.Offset == s.AddrReturn.Offset) {
-            if ((m_MaxRecursionCount > 0) && (curRecursionCount > m_MaxRecursionCount)) {
+            if ((m_maxRecursionCount > 0) && (curRecursionCount > m_maxRecursionCount)) {
                 OnDbgHelpErr ("StackWalk64-Endless-Callstack!", 0, s.AddrPC.Offset);
                 break;
             }
             curRecursionCount++;
         } else
             curRecursionCount = 0;
+
+		if (frameNum < m_minStackDepth)
+			continue;
+
+		csEntry.offset = s.AddrPC.Offset;
 
 		if(s.AddrPC.Offset != 0)
 		{
@@ -769,15 +756,19 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
 				// show procedure info (SymGetSymFromAddr64())
 				if (internal().pSymGetSymFromAddr64(m_hProcess, s.AddrPC.Offset,
 					&(csEntry.offsetFromSmybol), &sym) != FALSE) {
-					StrCpy(csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
+					csEntry.name = sym.Name;
+					//StrCpy(csEntry.name, Parameter::STACKWALKER_MAX_NAMELEN, sym.Name);
 
-					if (m_options & RetrieveUndecoratedNames)
+					if (m_options & RetrieveUndecoratedAll)
+					{
+						internal().pUnDecorateSymbolName(sym.Name, csEntry.undName,
+							Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
+					}
+					else if (m_options & RetrieveUndecoratedNames)
 					{
 						internal().pUnDecorateSymbolName(sym.Name, csEntry.undName,
 							Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-						internal().pUnDecorateSymbolName(sym.Name, csEntry.undFullName,
-							Parameter::STACKWALKER_MAX_NAMELEN, UNDNAME_COMPLETE);
-					}
+					} 
 				}
 				else {
 					OnDbgHelpErr("SymGetSymFromAddr64", GetLastError(), s.AddrPC.Offset);
@@ -786,10 +777,11 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             // show line number info, NT5.0-method (SymGetLineFromAddr64())
             if ((m_options & RetrieveLineAndFile) && internal().pSymGetLineFromAddr64 != NULL) { // yes, we have SymGetLineFromAddr64()
                 if (internal().pSymGetLineFromAddr64 (m_hProcess, s.AddrPC.Offset,
-                                                       &(csEntry.offsetFromLine), &Line) != FALSE) {
-                    csEntry.lineNumber = Line.LineNumber;
-					if((m_options & RetrieveLineAndFile) == RetrieveLineAndFile)
-						StrCpy (csEntry.lineFileName, Parameter::STACKWALKER_MAX_NAMELEN, Line.FileName);
+                                                       &(csEntry.offsetFromLine), &line) != FALSE) {
+                    csEntry.lineNumber = line.LineNumber;
+					if ((m_options & RetrieveLineAndFile) == RetrieveLineAndFile)
+						csEntry.lineFileName = line.FileName;
+						//StrCpy (csEntry.lineFileName, Parameter::STACKWALKER_MAX_NAMELEN, line.FileName);
                 } else {
                     OnDbgHelpErr ("SymGetLineFromAddr64", GetLastError (), s.AddrPC.Offset);
                 }
@@ -797,8 +789,8 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
 
             // show module info (SymGetModuleInfo64())
             if ((m_options & RetrieveModuleInfo)) {
-                if (internal().GetModuleInfo (m_hProcess, s.AddrPC.Offset, &Module) != FALSE) { // got module info OK
-                    switch (Module.SymType) {
+                if (internal().GetModuleInfo (m_hProcess, s.AddrPC.Offset, &module) != FALSE) { // got module info OK
+                    switch (module.SymType) {
                         case SymNone:
                             csEntry.symTypeString = "-nosymbols-";
                             break;
@@ -835,9 +827,11 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
                             break;
                     }
 
-                    StrCpy (csEntry.moduleName, Parameter::STACKWALKER_MAX_NAMELEN, Module.ModuleName);
-                    csEntry.baseOfImage = Module.BaseOfImage;
-                    StrCpy (csEntry.loadedImageName, Parameter::STACKWALKER_MAX_NAMELEN, Module.LoadedImageName);
+					csEntry.moduleName = module.ModuleName;
+                    //StrCpy (csEntry.moduleName, Parameter::STACKWALKER_MAX_NAMELEN, module.ModuleName);
+                    csEntry.baseOfImage = module.BaseOfImage;
+					csEntry.loadedImageName = module.LoadedImageName;
+                    //StrCpy (csEntry.loadedImageName, Parameter::STACKWALKER_MAX_NAMELEN, module.LoadedImageName);
                 } // got module info OK
                 else {
                     OnDbgHelpErr ("SymGetModuleInfo64", GetLastError (), s.AddrPC.Offset);
@@ -845,22 +839,22 @@ BOOL StackWalker::ShowCallstack (HANDLE hThread,
             }
         } // we seem to have a valid PC
 
-        CallstackEntryType et = nextEntry;
-        if (frameNum == 0)
-            et = firstEntry;
-        bLastEntryCalled = false;
-        OnCallstackEntry (et, csEntry);
+        //CallstackEntryType et = nextEntry;
+        //if (frameNum == 0)
+        //    et = firstEntry;
+        //bLastEntryCalled = false;
+        OnCallstackEntry (frameNum, csEntry);
 
         if (s.AddrReturn.Offset == 0) {
-            bLastEntryCalled = true;
-            OnCallstackEntry (lastEntry, csEntry);
-            SetLastError (ERROR_SUCCESS);
+           // bLastEntryCalled = true;
+           // OnCallstackEntry (frameNum, csEntry);
+           // SetLastError (ERROR_SUCCESS); //? needed?
             break;
         }
     } // for ( frameNum )
 
-    if (bLastEntryCalled == false)
-        OnCallstackEntry (lastEntry, csEntry);
+   // if (!bLastEntryCalled)
+   //     OnCallstackEntry (frameNum, csEntry);
 
     if (context == NULL)
         ResumeThread (hThread);

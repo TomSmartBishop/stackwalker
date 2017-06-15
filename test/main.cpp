@@ -33,7 +33,7 @@
 // Console (printf):
 class StackWalkerToConsole : public OutputStackWalker {
     public:
-    StackWalkerToConsole () : OutputStackWalker(OptionsSlim, 9)
+    StackWalkerToConsole () : OutputStackWalker(OptionsAll, 9)
 	{
     }
 
@@ -55,7 +55,7 @@ class StackWalkerToConsole : public OutputStackWalker {
 
 void Func5 () {
     StackWalkerToConsole sw;
-    sw.ShowCallstack ();
+    sw.Walk ();
 }
 void Func4 () {
     Func5 ();
@@ -150,7 +150,7 @@ static LONG __stdcall CrashHandlerExceptionFilter (EXCEPTION_POINTERS *pExPtrs) 
 #endif
 
     StackWalkerToConsole sw; // output to console
-    sw.ShowCallstack (GetCurrentThread (), pExPtrs->ContextRecord);
+    sw.Walk (GetCurrentThread (), pExPtrs->ContextRecord);
     TCHAR lString[500];
     _stprintf_s (lString,
                  _T("*** Unhandled Exception! See console output for more infos!\n")
@@ -185,7 +185,7 @@ static void InitUnhandledExceptionFilter () {
 LONG WINAPI ExpFilter (EXCEPTION_POINTERS *pExp, DWORD dwExpCode) {
     // StackWalker sw;  // output to default (Debug-Window)
     StackWalkerToConsole sw; // output to the console
-    sw.ShowCallstack (GetCurrentThread (), pExp->ContextRecord);
+    sw.Walk (GetCurrentThread (), pExp->ContextRecord);
     return EXCEPTION_EXECUTE_HANDLER;
 }
 void ExpTest5 () {

@@ -36,26 +36,22 @@ void OutputStackWalker::OnLoadModule (LPCSTR img,
     }
     OnOutput (buffer);
 }
+static bool notEmpty(const CHAR * str)
+{
+	return str != NULL && str[0] != 0;
+}
+void OutputStackWalker::OnCallstackEntry (int frameNum, CallstackEntry &entry) {
+    
+    if (entry.offset != 0) {
+		CHAR buffer[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
+			
+		const CHAR* lineFileName = notEmpty(entry.lineFileName) ? entry.lineFileName : "<no filename>";
+		const CHAR* moduleName = notEmpty(entry.moduleName) ? entry.moduleName: "<no module name>";
+		const CHAR* name = notEmpty(entry.undName) ? entry.undName : (notEmpty(entry.name) ? entry.name : "<no function name>");
 
-void OutputStackWalker::OnCallstackEntry (CallstackEntryType eType, CallstackEntry &entry) {
-    CHAR buffer[Parameter::STACKWALKER_MAX_TEMP_BUFFER];
-    if ((eType != lastEntry) && (entry.offset != 0)) {
-        if (entry.name[0] == 0)
-            StrCpy (entry.name, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "(function-name not available)");
-        if (entry.undName[0] != 0)
-            StrCpy (entry.name, Parameter::STACKWALKER_MAX_TEMP_BUFFER, entry.undName);
-        if (entry.undFullName[0] != 0)
-            StrCpy (entry.name, Parameter::STACKWALKER_MAX_TEMP_BUFFER, entry.undFullName);
-        if (entry.lineFileName[0] == 0) {
-            StrCpy (entry.lineFileName, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "(filename not available)");
-            if (entry.moduleName[0] == 0)
-                StrCpy (entry.moduleName, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "(module-name not available)");
-            _snprintf_s (buffer, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "%p (%s): %s: %s\n",
-                         (LPVOID)entry.offset, entry.moduleName, entry.lineFileName, entry.name);
-        } else
-            _snprintf_s (buffer, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "%s (%d): %s\n",
-                         entry.lineFileName, entry.lineNumber, entry.name);
-        buffer[Parameter::STACKWALKER_MAX_TEMP_BUFFER - 1] = 0;
+        _snprintf_s (buffer, Parameter::STACKWALKER_MAX_TEMP_BUFFER, "[%s] 0x%p %s (%d): %s\n",
+			moduleName, (LPVOID)entry.offset, lineFileName, entry.lineNumber, name);
+
         OnOutput (buffer);
     }
 }
